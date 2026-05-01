@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertCircle, Loader2, Plus, RefreshCw } from 'lucide-react'
 import './App.css'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+const API_BASE = import.meta.env.VITE_API_BASE_URL 
 const PENDING_EXPENSE_KEY = 'expense-tracker-pending-create'
 const NEW_CATEGORY_VALUE = '__new_category__'
 const DEFAULT_CATEGORIES = [
@@ -375,24 +375,6 @@ function App() {
                   <option value="amount_asc">Lowest to highest</option>
                 </select>
               </label>
-            </div>
-          </div>
-
-          <div className="category-summary" aria-label="Category-wise totals">
-            <div className="category-summary-header">
-              <h3>Category-wise total</h3>
-              <span>{expenses.length} entries</span>
-            </div>
-            <div className="category-total-list">
-              {categoryTotals.map((item) => (
-                <div className="category-total-row" key={item.category}>
-                  <span>{item.category}</span>
-                  <strong>{formatMoney(item.amount)}</strong>
-                </div>
-              ))}
-              {!loading && categoryTotals.length === 0 && (
-                <div className="category-total-empty">No category totals yet.</div>
-              )}
             </div>
           </div>
 
