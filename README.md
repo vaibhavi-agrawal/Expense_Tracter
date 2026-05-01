@@ -102,7 +102,7 @@ DATABASE_URL=<postgres-connection-url>
 
 Frontend deployment:
 
-- Deploy the `frontend` folder to Vercel or Netlify.
+- Deploy the `frontend` folder to Vercel 
 - Build command: `npm run build`
 - Output directory: `dist`
 - Set `VITE_API_BASE_URL` to the deployed backend URL, for example `https://expense-tracter-api.onrender.com`.
