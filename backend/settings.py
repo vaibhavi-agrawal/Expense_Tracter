@@ -204,7 +204,7 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         'CORS_ALLOWED_ORIGINS',
-        'http://127.0.0.1:5173,http://localhost:5173'
+        "https://expense-tracter.vercel.app",
     ).split(',')
     if origin.strip()
 ]
