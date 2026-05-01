@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 from rest_framework import viewsets
@@ -52,7 +53,16 @@ class ExpenseViewSet(viewsets.ModelViewSet):
             if existing:
                 serializer = self.get_serializer(existing)
                 return Response(serializer.data)
-        return super().create(request, *args, **kwargs)
+        try:
+            with transaction.atomic():
+                return super().create(request, *args, **kwargs)
+        except IntegrityError:
+            if idempotency_key:
+                existing = Expense.objects.filter(idempotency_key=idempotency_key).first()
+                if existing:
+                    serializer = self.get_serializer(existing)
+                    return Response(serializer.data)
+            raise
 
     @action(detail=False, methods=['get'])
     def summary(self, request):

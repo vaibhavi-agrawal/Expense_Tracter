@@ -14,6 +14,8 @@ A minimal full-stack expense tracker built for the assignment user story: record
 Backend:
 
 ```bash
+python -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python manage.py migrate
 .venv/bin/python manage.py runserver 127.0.0.1:8000
 ```
@@ -27,6 +29,8 @@ npm run dev -- --host 127.0.0.1
 ```
 
 Open `http://127.0.0.1:5173`.
+
+The React app reads `VITE_API_BASE_URL`; if it is not set, it uses `http://127.0.0.1:8000`.
 
 ## API
 
@@ -80,6 +84,28 @@ Response fields:
 - The UI is intentionally small: add form, table, category filter, newest-first sort, loading/error states, and current-list total.
 - The app keeps a couple of earlier nice-to-have backend endpoints (`/api/categories`, budgets, summary), but the assignment path is `/expenses`.
 - Idempotency is key-based. A client that does not send `Idempotency-Key` can still create duplicate identical expenses, which is often the correct behavior because real users may enter the same amount/category/date more than once.
+
+## Deployment
+
+The repository includes a `render.yaml` blueprint for deploying the Django API and PostgreSQL database on Render.
+
+Backend environment variables:
+
+```bash
+DEBUG=False
+SECRET_KEY=<generated-secret>
+ALLOWED_HOSTS=.onrender.com,localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=<deployed-frontend-url>
+CSRF_TRUSTED_ORIGINS=<deployed-frontend-url>
+DATABASE_URL=<postgres-connection-url>
+```
+
+Frontend deployment:
+
+- Deploy the `frontend` folder to Vercel or Netlify.
+- Build command: `npm run build`
+- Output directory: `dist`
+- Set `VITE_API_BASE_URL` to the deployed backend URL, for example `https://expense-tracter-api.onrender.com`.
 
 ## Tests
 
