@@ -49,16 +49,25 @@ function formatMoney(value) {
   }).format(Number(value || 0))
 }
 
+function parseExpenseDate(value) {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
 function App() {
   const [expenses, setExpenses] = useState([])
   const [allCategories, setAllCategories] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [addingNewCategory, setAddingNewCategory] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState('')
-  const [sortOrder, setSortOrder] = useState('date_desc')
+  const [dateSort, setDateSort] = useState('date_desc')
+  const [amountSort, setAmountSort] = useState('amount_desc')
+  const [activeSortType, setActiveSortType] = useState('date')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const activeSort = activeSortType === 'amount' ? amountSort : dateSort
 
   const loadCategories = useCallback(async () => {
     const data = await request('/categories/')
@@ -72,7 +81,7 @@ function App() {
     try {
       const params = new URLSearchParams()
       if (categoryFilter) params.set('category', categoryFilter)
-      params.set('sort', sortOrder)
+      params.set('sort', activeSort)
       const data = await request(`/expenses${params.toString() ? `?${params}` : ''}`)
       setExpenses(data)
     } catch {
@@ -80,7 +89,7 @@ function App() {
     } finally {
       setLoading(false)
     }
-  }, [categoryFilter, sortOrder])
+  }, [activeSort, categoryFilter])
 
   const createExpense = useCallback(async (payload, idempotencyKey) => {
     return request('/expenses', {
@@ -140,6 +149,41 @@ function App() {
     () => expenses.reduce((sum, expense) => sum + Number(expense.amount), 0),
     [expenses],
   )
+  const today = useMemo(() => new Date(), [])
+  const thisMonthTotal = useMemo(
+    () => expenses.reduce((sum, expense) => {
+      const expenseDate = parseExpenseDate(expense.date)
+      const isThisMonth = expenseDate.getFullYear() === today.getFullYear()
+        && expenseDate.getMonth() === today.getMonth()
+      return isThisMonth ? sum + Number(expense.amount) : sum
+    }, 0),
+    [expenses, today],
+  )
+  const lastWeekTotal = useMemo(
+    () => {
+      const weekStart = new Date(today)
+      weekStart.setDate(today.getDate() - 6)
+      weekStart.setHours(0, 0, 0, 0)
+      const weekEnd = new Date(today)
+      weekEnd.setHours(23, 59, 59, 999)
+
+      return expenses.reduce((sum, expense) => {
+        const expenseDate = parseExpenseDate(expense.date)
+        return expenseDate >= weekStart && expenseDate <= weekEnd ? sum + Number(expense.amount) : sum
+      }, 0)
+    },
+    [expenses, today],
+  )
+  const categoryTotals = useMemo(
+    () => [...expenses.reduce((totals, expense) => {
+      totals.set(expense.category, (totals.get(expense.category) || 0) + Number(expense.amount))
+      return totals
+    }, new Map())]
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((first, second) => second.amount - first.amount || first.category.localeCompare(second.category)),
+    [expenses],
+  )
+  const activeCategoryLabel = categoryFilter || 'All categories'
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -175,8 +219,9 @@ function App() {
     <main className="page">
       <header className="header">
         <div>
-          <p className="eyebrow">Personal finance</p>
+          <p className="eyebrow">Personal ledger</p>
           <h1>Expense Tracker</h1>
+          <p className="header-copy">Track daily spend, spot patterns, and keep categories tidy.</p>
         </div>
         <button className="icon-button" type="button" onClick={loadExpenses} aria-label="Refresh expenses" title="Refresh expenses">
           <RefreshCw size={18} />
@@ -190,9 +235,31 @@ function App() {
         </div>
       )}
 
+      <section className="summary-strip" aria-label="Expense summary">
+        <div className="summary-item total-summary">
+          <span>Total current view</span>
+          <strong>{formatMoney(total)}</strong>
+        </div>
+        <div className="summary-item">
+          <span>This month</span>
+          <strong>{formatMoney(thisMonthTotal)}</strong>
+        </div>
+        <div className="summary-item">
+          <span>Last 7 days</span>
+          <strong>{formatMoney(lastWeekTotal)}</strong>
+        </div>
+        <div className="summary-item">
+          <span>Category</span>
+          <strong>{activeCategoryLabel}</strong>
+        </div>
+      </section>
+
       <section className="layout">
         <form className="panel form-panel" onSubmit={handleSubmit}>
-          <h2>Add Expense</h2>
+          <div className="panel-title">
+            <p className="eyebrow">New entry</p>
+            <h2>Add Expense</h2>
+          </div>
           <label>
             Amount
             <input
@@ -268,21 +335,64 @@ function App() {
           <div className="list-header">
             <div>
               <h2>Expenses</h2>
-              <strong>Total: {formatMoney(total)}</strong>
+              <p>{expenses.length} entries in view</p>
             </div>
             <div className="controls">
-              <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter by category">
-                <option value="">All categories</option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-              <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} aria-label="Sort expenses">
-                <option value="date_desc">Date: newest first</option>
-                <option value="date_asc">Date: oldest first</option>
-                <option value="amount_desc">Amount: highest to lowest</option>
-                <option value="amount_asc">Amount: lowest to highest</option>
-              </select>
+              <label className="control-field">
+                Category
+                <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter by category">
+                  <option value="">All categories</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={activeSortType === 'date' ? 'control-field active-control' : 'control-field'}>
+                Date
+                <select
+                  value={dateSort}
+                  onChange={(event) => {
+                    setDateSort(event.target.value)
+                    setActiveSortType('date')
+                  }}
+                  aria-label="Sort by date"
+                >
+                  <option value="date_desc">Newest first</option>
+                  <option value="date_asc">Oldest first</option>
+                </select>
+              </label>
+              <label className={activeSortType === 'amount' ? 'control-field active-control' : 'control-field'}>
+                Amount
+                <select
+                  value={amountSort}
+                  onChange={(event) => {
+                    setAmountSort(event.target.value)
+                    setActiveSortType('amount')
+                  }}
+                  aria-label="Sort by amount"
+                >
+                  <option value="amount_desc">Highest to lowest</option>
+                  <option value="amount_asc">Lowest to highest</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div className="category-summary" aria-label="Category-wise totals">
+            <div className="category-summary-header">
+              <h3>Category-wise total</h3>
+              <span>{expenses.length} entries</span>
+            </div>
+            <div className="category-total-list">
+              {categoryTotals.map((item) => (
+                <div className="category-total-row" key={item.category}>
+                  <span>{item.category}</span>
+                  <strong>{formatMoney(item.amount)}</strong>
+                </div>
+              ))}
+              {!loading && categoryTotals.length === 0 && (
+                <div className="category-total-empty">No category totals yet.</div>
+              )}
             </div>
           </div>
 
@@ -300,7 +410,7 @@ function App() {
                 {expenses.map((expense) => (
                   <tr key={expense.id}>
                     <td>{expense.date}</td>
-                    <td>{expense.category}</td>
+                    <td><span className="category-pill">{expense.category}</span></td>
                     <td>{expense.description}</td>
                     <td className="amount-cell">{formatMoney(expense.amount)}</td>
                   </tr>
