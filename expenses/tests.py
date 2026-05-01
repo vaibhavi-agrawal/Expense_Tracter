@@ -67,6 +67,29 @@ class ExpenseApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual([item['description'] for item in response.data], ['Dinner', 'Coffee'])
 
+    def test_sort_by_date_asc(self):
+        rows = [
+            ('Food', '2026-05-03', 'Dinner'),
+            ('Travel', '2026-05-01', 'Metro'),
+            ('Education', '2026-05-02', 'Book'),
+        ]
+        for category, expense_date, description in rows:
+            self.client.post(
+                '/expenses',
+                {
+                    'amount': '10.00',
+                    'category': category,
+                    'description': description,
+                    'date': expense_date,
+                },
+                format='json',
+            )
+
+        response = self.client.get('/expenses?sort=date_asc')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item['description'] for item in response.data], ['Metro', 'Book', 'Dinner'])
+
     def test_rejects_negative_amount(self):
         response = self.client.post(
             '/expenses',

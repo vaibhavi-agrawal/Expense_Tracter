@@ -1,9 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertCircle, ArrowDownUp, Loader2, Plus, RefreshCw } from 'lucide-react'
+import { AlertCircle, Loader2, Plus, RefreshCw } from 'lucide-react'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 const PENDING_EXPENSE_KEY = 'expense-tracker-pending-create'
+const NEW_CATEGORY_VALUE = '__new_category__'
+const DEFAULT_CATEGORIES = [
+  'Living',
+  'Food & Dining',
+  'Transportation',
+  'Education',
+  'Shopping',
+  'Health & Fitness',
+  'Entertainment',
+  'Travel',
+  'Work & Productivity',
+  'Bills & Payments',
+  'Personal',
+  'Miscellaneous',
+]
 
 const emptyForm = {
   amount: '',
@@ -14,8 +29,8 @@ const emptyForm = {
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
+    headers: { 'Content-Type': 'application/json', ...options.headers },
   })
 
   if (!response.ok) {
@@ -36,12 +51,19 @@ function formatMoney(value) {
 
 function App() {
   const [expenses, setExpenses] = useState([])
+  const [allCategories, setAllCategories] = useState([])
   const [form, setForm] = useState(emptyForm)
+  const [addingNewCategory, setAddingNewCategory] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState('')
-  const [sortNewestFirst, setSortNewestFirst] = useState(true)
+  const [sortOrder, setSortOrder] = useState('date_desc')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const loadCategories = useCallback(async () => {
+    const data = await request('/categories/')
+    setAllCategories(data)
+  }, [])
 
   const loadExpenses = useCallback(async () => {
     setLoading(true)
@@ -50,7 +72,7 @@ function App() {
     try {
       const params = new URLSearchParams()
       if (categoryFilter) params.set('category', categoryFilter)
-      if (sortNewestFirst) params.set('sort', 'date_desc')
+      params.set('sort', sortOrder)
       const data = await request(`/expenses${params.toString() ? `?${params}` : ''}`)
       setExpenses(data)
     } catch {
@@ -58,7 +80,7 @@ function App() {
     } finally {
       setLoading(false)
     }
-  }, [categoryFilter, sortNewestFirst])
+  }, [categoryFilter, sortOrder])
 
   const createExpense = useCallback(async (payload, idempotencyKey) => {
     return request('/expenses', {
@@ -73,6 +95,12 @@ function App() {
   }, [loadExpenses])
 
   useEffect(() => {
+    loadCategories().catch(() => {
+      setError('Could not load categories. Check that the backend is running, then try again.')
+    })
+  }, [loadCategories])
+
+  useEffect(() => {
     const pending = localStorage.getItem(PENDING_EXPENSE_KEY)
     if (!pending) return
 
@@ -82,6 +110,7 @@ function App() {
         const { payload, idempotencyKey } = JSON.parse(pending)
         await createExpense(payload, idempotencyKey)
         localStorage.removeItem(PENDING_EXPENSE_KEY)
+        await loadCategories()
         await loadExpenses()
       } catch {
         setError('A previous submit may not have completed. It is safe to submit again.')
@@ -91,11 +120,20 @@ function App() {
     }
 
     retryPendingCreate()
-  }, [createExpense, loadExpenses])
+  }, [createExpense, loadCategories, loadExpenses])
 
   const categories = useMemo(
-    () => [...new Set(expenses.map((expense) => expense.category))].sort((a, b) => a.localeCompare(b)),
-    [expenses],
+    () => {
+      const savedCategories = allCategories.map((category) => category.name)
+      const categorySet = new Set([...DEFAULT_CATEGORIES, ...savedCategories])
+      return [
+        ...DEFAULT_CATEGORIES,
+        ...[...categorySet]
+          .filter((category) => !DEFAULT_CATEGORIES.includes(category))
+          .sort((a, b) => a.localeCompare(b)),
+      ]
+    },
+    [allCategories],
   )
 
   const total = useMemo(
@@ -123,6 +161,8 @@ function App() {
       await createExpense(payload, idempotencyKey)
       localStorage.removeItem(PENDING_EXPENSE_KEY)
       setForm(emptyForm)
+      setAddingNewCategory(false)
+      await loadCategories()
       await loadExpenses()
     } catch {
       setError('Could not save the expense. Your submit key is kept locally, so retrying will not duplicate it.')
@@ -167,13 +207,38 @@ function App() {
           </label>
           <label>
             Category
-            <input
-              required
-              value={form.category}
-              onChange={(event) => setForm({ ...form, category: event.target.value })}
-              placeholder="Food"
-            />
+            <select
+              required={!addingNewCategory}
+              value={addingNewCategory ? NEW_CATEGORY_VALUE : form.category}
+              onChange={(event) => {
+                if (event.target.value === NEW_CATEGORY_VALUE) {
+                  setAddingNewCategory(true)
+                  setForm({ ...form, category: '' })
+                  return
+                }
+
+                setAddingNewCategory(false)
+                setForm({ ...form, category: event.target.value })
+              }}
+            >
+              <option value="">Select category</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+              <option value={NEW_CATEGORY_VALUE}>New category</option>
+            </select>
           </label>
+          {addingNewCategory && (
+            <label>
+              New category
+              <input
+                required
+                value={form.category}
+                onChange={(event) => setForm({ ...form, category: event.target.value })}
+                placeholder="Coffee"
+              />
+            </label>
+          )}
           <label>
             Description
             <textarea
@@ -212,14 +277,10 @@ function App() {
                   <option key={category} value={category}>{category}</option>
                 ))}
               </select>
-              <button
-                className={sortNewestFirst ? 'secondary-button active' : 'secondary-button'}
-                type="button"
-                onClick={() => setSortNewestFirst((current) => !current)}
-              >
-                <ArrowDownUp size={16} />
-                Newest first
-              </button>
+              <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} aria-label="Sort by date">
+                <option value="date_desc">Date: newest first</option>
+                <option value="date_asc">Date: oldest first</option>
+              </select>
             </div>
           </div>
 

@@ -38,6 +38,8 @@ class ExpenseViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(spent_on__lte=end_date)
         if sort == 'date_desc':
             queryset = queryset.order_by('-spent_on', '-created_at')
+        elif sort == 'date_asc':
+            queryset = queryset.order_by('spent_on', 'created_at')
 
         return queryset
 
