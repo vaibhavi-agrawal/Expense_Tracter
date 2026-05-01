@@ -237,6 +237,43 @@ button {
   background: #f0fdfa;
 }
 
+.category-navigator {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  background: #f0fdfa;
+}
+
+.navigator-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border: 1px solid #d1faf6;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.navigator-item span {
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.navigator-item strong {
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 850;
+}
+
 .category-summary {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -395,6 +432,10 @@ tbody tr:hover {
 
   .control-field {
     flex: 1 1 180px;
+  }
+
+  .category-navigator {
+    grid-template-columns: 1fr;
   }
 }
 
