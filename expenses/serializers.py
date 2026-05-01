@@ -40,7 +40,16 @@ class ExpenseSerializer(serializers.ModelSerializer):
             defaults={'name': category_name},
         )
         notes = validated_data.get('notes', '').strip()
+        validated_data['notes'] = notes
         idempotency_key = self.context.get('idempotency_key')
+        existing = Expense.objects.filter(
+            amount=validated_data['amount'],
+            category=category,
+            notes=notes,
+            spent_on=validated_data['spent_on'],
+        ).first()
+        if existing:
+            return existing
 
         return Expense.objects.create(
             **validated_data,

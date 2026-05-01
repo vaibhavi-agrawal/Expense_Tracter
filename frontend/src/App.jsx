@@ -277,9 +277,11 @@ function App() {
                   <option key={category} value={category}>{category}</option>
                 ))}
               </select>
-              <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} aria-label="Sort by date">
+              <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} aria-label="Sort expenses">
                 <option value="date_desc">Date: newest first</option>
                 <option value="date_asc">Date: oldest first</option>
+                <option value="amount_desc">Amount: highest to lowest</option>
+                <option value="amount_asc">Amount: lowest to highest</option>
               </select>
             </div>
           </div>
