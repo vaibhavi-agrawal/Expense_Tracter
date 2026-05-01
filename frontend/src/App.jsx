@@ -185,57 +185,6 @@ function App() {
   )
   const activeCategoryLabel = categoryFilter || 'All categories'
 
-  // Category-based totals for different time periods
-  const selectedCategoryThisMonthTotal = useMemo(
-    () => {
-      if (!categoryFilter) return 0
-      return expenses.reduce((sum, expense) => {
-        const expenseDate = parseExpenseDate(expense.date)
-        const isThisMonth = expenseDate.getFullYear() === today.getFullYear()
-          && expenseDate.getMonth() === today.getMonth()
-        return expense.category === categoryFilter && isThisMonth
-          ? sum + Number(expense.amount)
-          : sum
-      }, 0)
-    },
-    [expenses, categoryFilter, today],
-  )
-
-  const selectedCategoryLastWeekTotal = useMemo(
-    () => {
-      if (!categoryFilter) return 0
-      const weekStart = new Date(today)
-      weekStart.setDate(today.getDate() - 6)
-      weekStart.setHours(0, 0, 0, 0)
-      const weekEnd = new Date(today)
-      weekEnd.setHours(23, 59, 59, 999)
-
-      return expenses.reduce((sum, expense) => {
-        const expenseDate = parseExpenseDate(expense.date)
-        return expense.category === categoryFilter
-          && expenseDate >= weekStart
-          && expenseDate <= weekEnd
-          ? sum + Number(expense.amount)
-          : sum
-      }, 0)
-    },
-    [expenses, categoryFilter, today],
-  )
-
-  const selectedCategoryAnnuallyTotal = useMemo(
-    () => {
-      if (!categoryFilter) return 0
-      return expenses.reduce((sum, expense) => {
-        const expenseDate = parseExpenseDate(expense.date)
-        const isThisYear = expenseDate.getFullYear() === today.getFullYear()
-        return expense.category === categoryFilter && isThisYear
-          ? sum + Number(expense.amount)
-          : sum
-      }, 0)
-    },
-    [expenses, categoryFilter, today],
-  )
-
   const handleSubmit = async (event) => {
     event.preventDefault()
     if (saving) return
@@ -428,23 +377,6 @@ function App() {
               </label>
             </div>
           </div>
-
-          {categoryFilter && (
-            <div className="category-navigator" aria-label="Category time period navigation">
-              <div className="navigator-item">
-                <span>This Month</span>
-                <strong>{formatMoney(selectedCategoryThisMonthTotal)}</strong>
-              </div>
-              <div className="navigator-item">
-                <span>Last 7 Days</span>
-                <strong>{formatMoney(selectedCategoryLastWeekTotal)}</strong>
-              </div>
-              <div className="navigator-item">
-                <span>Annually</span>
-                <strong>{formatMoney(selectedCategoryAnnuallyTotal)}</strong>
-              </div>
-            </div>
-          )}
 
           <div className="category-summary" aria-label="Category-wise totals">
             <div className="category-summary-header">
