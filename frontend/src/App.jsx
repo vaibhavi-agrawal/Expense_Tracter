@@ -1,8 +1,10 @@
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertCircle, Loader2, Plus, RefreshCw } from 'lucide-react'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL 
+console.log("API BASE:", API_BASE)
 const PENDING_EXPENSE_KEY = 'expense-tracker-pending-create'
 const NEW_CATEGORY_VALUE = '__new_category__'
 const DEFAULT_CATEGORIES = [
@@ -82,7 +84,7 @@ function App() {
       const params = new URLSearchParams()
       if (categoryFilter) params.set('category', categoryFilter)
       params.set('sort', activeSort)
-      const data = await request(`/expenses${params.toString() ? `?${params}` : ''}`)
+      const data = await request(`/expenses/${params.toString() ? `?${params}` : ''}`)
       setExpenses(data)
     } catch {
       setError('Could not load expenses. Check that the backend is running, then try again.')
@@ -92,7 +94,7 @@ function App() {
   }, [activeSort, categoryFilter])
 
   const createExpense = useCallback(async (payload, idempotencyKey) => {
-    return request('/expenses', {
+    return request('/expenses/', {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify(payload),
